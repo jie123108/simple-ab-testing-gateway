@@ -24,7 +24,16 @@ end
 
 local function get_post_object() 
   ngx.req.read_body()
-  local jso = cjson.decode(ngx.req.get_body_data())
+  local body = ngx.req.get_body_data()
+  local ok, jso = pcall(function ()
+    return cjson.decode(body)
+  end)
+  if not ok then 
+    ngx.log(ngx.ERR, "decode(", body, ") failed! err:", jso)
+    ngx.status = 400
+    ngx.say("request body invalid! must be a valid json")
+    ngx.exit(0)
+  end
   return jso
 end
 
@@ -56,7 +65,7 @@ local function ab_add()
   local body = get_post_object()
   local red = new_redis()
   if body.key and body.server then 
-    red:hset("ab-config", body.key, body.server)
+    red:hset(config.redis_key, body.key, body.server)
     ngx.say("set ", body.key, " = ", body.server)
     ngx.say("生效时间: ", config.reload_interval, " 秒")
   else
@@ -68,7 +77,7 @@ local function ab_del()
   local body = get_post_object()
   local red = new_redis()
   if body.key then 
-    red:hdel("ab-config", body.key)
+    red:hdel(config.redis_key, body.key)
     ngx.say("del ", body.key, " success")
     ngx.say("生效时间: ", config.reload_interval, " 秒")
   else

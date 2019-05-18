@@ -29,7 +29,7 @@ end
 
 local function load_test_version() 
   local red = redis:new(redis_config)
-  local result = red:hgetall("ab-config")
+  local result = red:hgetall(config.redis_key)
   local ab_version = {}
   if result and type(result) == "table" then 
     ab_version = redisList2map(result)
