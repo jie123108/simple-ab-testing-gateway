@@ -11,15 +11,18 @@ _M.get_server = function()
   local platform = headers["X-Platform"] or "unknow"
   local version = headers["X-Version"] or "unknow"
   local test_key = platform .. "-" .. version
-  local server_key = ab_version[test_key]
-
+  local server_key = ab_version[test_key] or ab_version[platform]
   local server = config.servers[server_key] or config.servers["default"]
+  ngx.log(ngx.INFO, "test_key: ", test_key, ", server_key: ", server_key,", server: ", server)
+  ngx.log(ngx.DEBUG, "ab_versions: ", cjson.encode(ab_version))
+  ngx.log(ngx.DEBUG, "config.servers: ", cjson.encode(config.servers))
+
   return server
 end
 
-local function redisList2map(result) 
+local function redisList2map(result)
   local map = {}
-  for i=1,table.getn(result),2 do 
+  for i=1,table.getn(result),2 do
     local key = result[i]
     local value = result[i+1]
     map[key] = value
@@ -27,15 +30,15 @@ local function redisList2map(result)
   return map
 end
 
-local function load_test_version() 
+local function load_test_version()
   local red = redis:new(redis_config)
-  local result = red:hgetall(config.redis_key)
+  local result = red:hgetall("ab-config")
   local ab_version = {}
-  if result and type(result) == "table" then 
+  if result and type(result) == "table" then
     ab_version = redisList2map(result)
   end
   package.loaded.ab_version = ab_version
-  ngx.log(ngx.WARN, "load ab config from redis: ", cjson.encode(ab_version))
+  ngx.log(ngx.INFO, "load ab config from redis: ", cjson.encode(ab_version))
 end
 
 _M.ab_testing_init_worker = function()
